@@ -37,9 +37,10 @@ export
     class VariableInspectionHandler implements IDisposable, IVariableInspector.IInspectable {
 
     private _connector: KernelConnector;
-    private _queryCommand: string;
     private _initScript: string;
+    private _queryCommand: string;
     private _matrixQueryCommand: string;
+    private _widgetQueryCommand: string;
     private _deleteCommand: string;
     private _disposed = new Signal<this, void>( this );
     private _inspected = new Signal<this, IVariableInspector.IVariableInspectorUpdate>( this );
@@ -53,6 +54,7 @@ export
         this._id = options.id;
         this._queryCommand = options.queryCommand;
         this._matrixQueryCommand = options.matrixQueryCommand;
+        this._widgetQueryCommand = options.widgetQueryCommand;
         this._deleteCommand = options.deleteCommand;
         this._initScript = options.initScript;
         
@@ -118,6 +120,18 @@ export
             store_history: false
         };
         this._connector.fetch( content, this._handleQueryResponse );
+    }
+
+    /**
+     * Performs an inspection of a Jupyter Widget
+     */
+    public performWidgetInspection(varName: string) {
+        const request: KernelMessage.IExecuteRequestMsg['content'] = {
+            code: this._widgetQueryCommand + "(" + varName + ")",
+            stop_on_error: false,
+            store_history: false
+        };
+        return this._connector.execute(request);
     }
 
     /**
@@ -259,7 +273,7 @@ export
         switch ( msgType ) {
             case 'execute_input':
                 let code = msg.content.code;
-                if ( !( code == this._queryCommand ) && !( code == this._matrixQueryCommand ) ) {
+                if ( !( code == this._queryCommand ) && !( code == this._matrixQueryCommand ) && !( code.startsWith(this._widgetQueryCommand)) ) {
                     this.performInspection();
                 }
                 break;
@@ -282,6 +296,7 @@ namespace VariableInspectionHandler {
         connector: KernelConnector;
         queryCommand: string;
         matrixQueryCommand: string;
+        widgetQueryCommand: string;
         deleteCommand: string;
         initScript: string;
         id : string;
@@ -332,6 +347,11 @@ export
         
         public performMatrixInspection(varName : string, maxRows : number): Promise<DataModel>{
             return new Promise(function(resolve, reject) { reject("Cannot inspect matrices w/ the DummyHandler!") });
+        }
+
+        // @ts-ignore
+        public performWidgetInspection(varName : string): Promise<any> {
+            return new Promise(function(resolve, reject) { reject("Not implemented") });
         }
 
         public performDelete(varName: string){}

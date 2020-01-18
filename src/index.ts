@@ -36,8 +36,6 @@ import {
 } from '@jupyterlab/notebook';
 
 
-
-
 namespace CommandIDs {
     export
     const open = "variableinspector:open";
@@ -66,7 +64,7 @@ const variableinspector: JupyterFrontEndPlugin<IVariableInspectorManager> = {
              * Create and track a new inspector.
              */
             function newPanel(): VariableInspectorPanel {
-                const panel = new VariableInspectorPanel();
+                const panel = new VariableInspectorPanel(manager);
                 
                 panel.id = "jp-variableinspector";
                 panel.title.label = "Variable Inspector";
@@ -144,11 +142,13 @@ const consoles: JupyterFrontEndPlugin<void> = {
                             let initScript = result.initScript;
                             let queryCommand = result.queryCommand;
                             let matrixQueryCommand = result.matrixQueryCommand;
+                            let widgetQueryCommand = result.widgetQueryCommand;
                             let deleteCommand = result.deleteCommand;
                             
                             const options: VariableInspectionHandler.IOptions = {
                                     queryCommand: queryCommand,
                                     matrixQueryCommand: matrixQueryCommand,
+                                    widgetQueryCommand,
                                     deleteCommand: deleteCommand,
                                     connector: connector,
                                     initScript: initScript,
@@ -175,6 +175,8 @@ const consoles: JupyterFrontEndPlugin<void> = {
                                 delete handlers[consolePanel.id];
                                 handler.dispose();
                             } );
+
+                            // @ts-ignore
                             resolve( handler );                        
                         } )
                         } );
@@ -233,6 +235,7 @@ const notebooks: JupyterFrontEndPlugin<void> = {
                     
                     const session = nbPanel.session;
                     const connector = new KernelConnector( { session } );
+                    manager.rendermime = nbPanel.content.rendermime;
                     
                     connector.ready.then(() => { // Create connector and init w script if it exists for kernel type.
                         let kerneltype: string = connector.kernelType;
@@ -242,11 +245,13 @@ const notebooks: JupyterFrontEndPlugin<void> = {
                         let initScript = result.initScript;
                         let queryCommand = result.queryCommand;
                         let matrixQueryCommand = result.matrixQueryCommand;
+                        let widgetQueryCommand = result.widgetQueryCommand;
                         let deleteCommand = result.deleteCommand;
                         
                         const options: VariableInspectionHandler.IOptions = {
                                 queryCommand: queryCommand,
                                 matrixQueryCommand: matrixQueryCommand,
+                                widgetQueryCommand,
                                 deleteCommand: deleteCommand,
                                 connector: connector,
                                 initScript: initScript,

@@ -3,6 +3,10 @@ import {
 } from "./variableinspector"
 
 import {
+    IRenderMimeRegistry
+} from '@jupyterlab/rendermime';
+
+import {
     Token
 } from '@phosphor/coreutils';
 
@@ -13,6 +17,7 @@ import{
 export const IVariableInspectorManager = new Token<IVariableInspectorManager>("jupyterlab_extension/variableinspector:IVariableInspectorManager" );
 
 export interface IVariableInspectorManager{
+    rendermime: IRenderMimeRegistry;
     source: IVariableInspector.IInspectable | null;
     hasHandler(id:string) : boolean;
     getHandler(id:string): VariableInspectionHandler;
@@ -29,6 +34,7 @@ export interface IVariableInspectorManager{
 export
     class VariableInspectorManager implements IVariableInspectorManager {
 
+    public rendermime: IRenderMimeRegistry;
     private _source: IVariableInspector.IInspectable = null;
     private _panel: VariableInspectorPanel = null;
     private _handlers : { [id : string] : VariableInspectionHandler} = {};

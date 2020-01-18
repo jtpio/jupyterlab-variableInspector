@@ -1,4 +1,9 @@
 import {
+    OutputArea,
+    OutputAreaModel
+} from '@jupyterlab/outputarea';
+
+import {
     ISignal
 } from '@phosphor/signaling';
 
@@ -15,6 +20,8 @@ import {
 } from "@phosphor/datagrid";
 
 import '../style/index.css';
+import { Kernel, KernelMessage } from '@jupyterlab/services';
+import { IVariableInspectorManager } from './manager';
 
 const TITLE_CLASS = "jp-VarInspector-title";
 const PANEL_CLASS = "jp-VarInspector";
@@ -48,6 +55,7 @@ namespace IVariableInspector {
         inspected: ISignal<any, IVariableInspectorUpdate>;
         performInspection(): void;
         performMatrixInspection( varName: string, maxRows? : number ): Promise<DataModel>;
+        performWidgetInspection(varName: string): Kernel.IShellFuture<KernelMessage.IExecuteRequestMsg, KernelMessage.IExecuteReplyMsg>;
         performDelete( varName: string ): void;
     }
 
@@ -55,6 +63,7 @@ namespace IVariableInspector {
         interface IVariableInspectorUpdate {
         title: IVariableTitle;
         payload: Array<IVariable>;
+        output?: OutputArea;
     } 
 
     export
@@ -65,6 +74,7 @@ namespace IVariableInspector {
         varContent: string;
         varType: string;
         isMatrix: boolean;
+        isWidget: boolean;
     }
     export
         interface IVariableTitle {
@@ -81,14 +91,16 @@ namespace IVariableInspector {
 export
     class VariableInspectorPanel extends Widget implements IVariableInspector {
 
+    private _manager: IVariableInspectorManager;
     private _source: IVariableInspector.IInspectable | null = null;
     private _table: HTMLTableElement;
     private _title: HTMLElement;
 
 
-    constructor() {
+    constructor(manager: IVariableInspectorManager) {
         super();
         this.addClass( PANEL_CLASS );
+        this._manager = manager;
         this._title = Private.createTitle();
         this._title.className = TITLE_CLASS;
         this._table = Private.createTable();
@@ -149,8 +161,9 @@ export
         this._table.createTFoot();
         this._table.tFoot.className = TABLE_BODY_CLASS;
         for ( let index = 0; index < args.length; index++ ) {
-            let name = args[index].varName;
-            let varType = args[index].varType;
+            const item = args[index];
+            let name = item.varName;
+            let varType = item.varType;
 
             row = this._table.tFoot.insertRow();
 
@@ -167,7 +180,7 @@ export
             cell = row.insertCell( 1 );
             cell.innerHTML = name;
             
-            if ( args[index].isMatrix ) {
+            if ( item.isMatrix ) {
               cell.className = "jp-VarInspector-varName";
               cell.title = "View Contents";
 
@@ -182,11 +195,19 @@ export
             cell = row.insertCell( 2 );
             cell.innerHTML = varType;
             cell = row.insertCell( 3 );
-            cell.innerHTML = args[index].varSize;
+            cell.innerHTML = item.varSize;
             cell = row.insertCell( 4 );
-            cell.innerHTML = args[index].varShape;
+            cell.innerHTML = item.varShape;
             cell = row.insertCell( 5 );
-            cell.innerHTML = args[index].varContent.replace(/\\n/g,  "</br>");
+
+            if (item.isWidget && this._manager.rendermime) {
+                const model = new OutputAreaModel({trusted: true});
+                const output = new OutputArea({ model, rendermime: this._manager.rendermime });
+                output.future = this._source.performWidgetInspection(item.varName);
+                Widget.attach(output, cell);
+            } else {
+                cell.innerHTML = item.varContent.replace(/\\n/g,  "</br>");
+            }
         }
     }
 
